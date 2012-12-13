@@ -18,15 +18,39 @@ module GridVid
         :input  => iput,
         :output => oput
       }.merge(job_data)
-    
     end 
  
 
     def submit()
       self.jobid = GridVid.submit(@_submit)
       self.jobid 
-    end 
+    end
 
+
+    def status()
+      statuses = GridVid.query(
+                    {
+                      :key    => @_submit[:key],
+                      :secret => @_submit[:secret],
+                      :jobids => [self.jobid]
+                    }
+                  )
+    
+      statuses.each_pair {|jobid, val|
+        case val['status']
+        when "PASS"
+          return [true , "PASS"]
+
+        when "FAILED"
+          return [true , "FAILED"] 
+        
+        else
+          return [false, val["status"]]
+        end 
+        }
+      
+      return [false, ""]
+    end 
   end
   
 end 

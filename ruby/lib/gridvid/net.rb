@@ -60,6 +60,10 @@ module GridVid
     
     ret = JSON.parse(res.body)
     
+    if !ret.has_key?('jobid')
+      raise ret['info']
+    end 
+
     ret['jobid'] 
   end
 

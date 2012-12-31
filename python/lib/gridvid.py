@@ -41,7 +41,7 @@ def __impl_net(url, payload, method = None):
 
     if method:
         assert method in ('GET', 'POST', 'PUT') 
-        ret.get_method = lambda: method 
+        req.get_method = lambda: method 
 
     return json.loads(
             urllib2.urlopen(req).read() 
@@ -60,7 +60,7 @@ def __impl_submit(job_submit):
     try:
         ret = __impl_net(__API_URL, job_submit) 
     except Exception as err:
-        raise NetException('Failed to submit to GridVid')
+        raise NetException('Failed to submit to GridVid (%s)' % err)
 
     if ret['status'] != 'SUCCESS':
         if 'info' in ret:
@@ -79,9 +79,11 @@ def __impl_query(job_query):
     :type  job_query:   dict() 
     """
     try: 
-        ret = __impl_submit('%s/query', __API_URL, job_query)
+        ret = __impl_query(job_query)
     except Exception as err:
-        raise NetException('Failed to submit to GridVid') 
+        raise NetException('Failed to submit to GridVid (%s)' % err) 
+    
+    return dict() 
 
 
 def __impl_discover(disc_query):
@@ -90,10 +92,12 @@ def __impl_discover(disc_query):
     :type  disc_query:  dict() 
     """
     try: 
-        ret = __impl_submit('%s/query', __API_URL, job_query)
+        ret = __impl_submit(disc_query)
     except Exception as err:
-        raise NetException('Failed to submit to GridVid') 
+        raise NetException('Failed to submit to GridVid (%s)' % err) 
     
+    return list() 
+
 
 class Job(object):
     """
@@ -127,6 +131,7 @@ class Job(object):
                 }
         self.__job_data.update(jobd) 
 
+        self.__jobid = None
     
     def jobid(self):
         """
@@ -143,6 +148,9 @@ class Job(object):
 
     def submit(self):
         """
+        Submit the job object for execution.
+        :return:    JobID associated with job 
+        :type  :    str() 
         """
         self.__jobid = __impl_submit(self.__job_data)['jobid'] 
         return self.__jobid 
@@ -176,7 +184,7 @@ class Job(object):
         else:
             if ret['status'] in ('PASS', 'FAILED'):
                 return (True , ret['status'] == 'PASS')
-            else 
+            else: 
                 return (False, False) 
 
 
@@ -196,6 +204,13 @@ class Group(object):
 
     def add_job(self, job, output_file):
         """
+        Add a job to the job group. 
+
+        :param job:         Job to add to the list 
+        :type  job:         dict()
+
+        :param output_file: Name of the output file to store as. 
+        :type  output_file: str() 
         """
         if not isinstance(job, dict):
             raise TypeError('Submitted job must be of type dict()')
@@ -213,6 +228,10 @@ class Group(object):
 
     def submit(self):
         """
+        Submit the job group.
+
+        :return:    List of submitted jobids 
+        :type  :    list(str())
         """
         assert len(self.__job_obj_l) == 0
         self.__job_str_l = [x.submit() for x in self.__job_obj_l]
@@ -226,11 +245,11 @@ class Group(object):
         """
         query = {
             'key'    : __API_KEY,
-            'secret' : __API_SECRET 
+            'secret' : __API_SECRET,  
             'jobids' : self.__job_str_l
             }
 
-        ret = __impl_discover(query)  
+        ret = __impl_query(query)  
         
         # check that all of the jobids are in the response 
         if not all(jobid in ret for jobid in self.__job_str_l):
@@ -250,5 +269,5 @@ class Group(object):
                 else: #<-- presumably still running 
                     rets[2].append(jobid) 
 
-       return tuple([len(rets[2] == 0)] + rets)           
+        return tuple([len(rets[2] == 0)] + rets)           
 

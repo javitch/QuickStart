@@ -8,7 +8,10 @@ setup(name              = 'py-gridvid',
       maintainer        = 'GridVid',
       maintainer_email  = 'info@gridvid.me',
       url               = 'https://gridvid.me',
-      packages          = ['gridvid'],
-      package_dir       = {'gridvid' : 'lib'},
+      py_modules        = [
+          'gridvid'
+          ],
+      #packages          = ['gridvid'],
+      package_dir       = {'' : 'lib'},
       license           = 'GPLv3'
       )

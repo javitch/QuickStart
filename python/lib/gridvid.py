@@ -6,9 +6,9 @@ import urllib2
 import json 
 from   os import getenv 
 
-__API_KEY    = getenv('GRIDVID_KEY')    if getenv('GRIDVID_KEY')    else None 
-__API_SECRET = getenv('GRIDVID_SECRET') if getenv('GRIDVID_SECRET') else None 
-__API_URL    = 'https://cloud.cpusage.com/gridvid'
+API_KEY    = getenv('GRIDVID_KEY')    if getenv('GRIDVID_KEY')    else None 
+API_SECRET = getenv('GRIDVID_SECRET') if getenv('GRIDVID_SECRET') else None 
+API_URL    = 'https://cloud.cpusage.com/gridvid'
 
 
 class SubmitException(RuntimeError):
@@ -42,13 +42,14 @@ def __impl_net(url, payload, method = None):
     if method:
         assert method in ('GET', 'POST', 'PUT') 
         req.get_method = lambda: method 
+    
 
     return json.loads(
             urllib2.urlopen(req).read() 
             )
 
 
-def __impl_submit(job_submit):
+def impl_submit(job_submit):
     """
     :param job_submit:
     :type  job_submit:  dict()
@@ -58,7 +59,7 @@ def __impl_submit(job_submit):
     :raise NetException:    If it has failed to connect to the REST api.
     """
     try:
-        ret = __impl_net(__API_URL, job_submit) 
+        ret = __impl_net(API_URL, job_submit) 
     except Exception as err:
         raise NetException('Failed to submit to GridVid (%s)' % err)
 
@@ -69,34 +70,35 @@ def __impl_submit(job_submit):
             raise SubmitException('no jobid returned') 
         else:
             raise SubmitException('unknown error') 
-    
-    return ret['jobid']
+   
+    return ret
 
 
-def __impl_query(job_query):
+def impl_query(job_query):
     """
     :param job_query:   
     :type  job_query:   dict() 
     """
     try: 
-        ret = __impl_query(job_query)
+        ret = __impl_net('%s/query' % API_URL, job_query, 'GET')
     except Exception as err:
         raise NetException('Failed to submit to GridVid (%s)' % err) 
     
-    return dict() 
+    return ret 
 
 
-def __impl_discover(disc_query):
+def impl_discover(disc_query):
     """
     :param disc_query:   
     :type  disc_query:  dict() 
     """
     try: 
-        ret = __impl_submit(disc_query)
+        ret = __impl_net('%s/discover' % API_URL, disc_query, 'GET')
     except Exception as err:
-        raise NetException('Failed to submit to GridVid (%s)' % err) 
-    
-    return list() 
+        raise NetException('Failed to query GridVid (%s)' % err) 
+
+
+    return ret 
 
 
 class Job(object):
@@ -122,17 +124,19 @@ class Job(object):
 
         if not isinstance(jobd, dict): 
             raise TypeError('input place must be of type dict()')
-       
+        
+        
         self.__job_data = {
-                'key'       : __API_KEY,
-                'secret'    : __API_SECRET, 
+                'key'       : API_KEY,
+                'secret'    : API_SECRET, 
                 'input'     : iput, 
                 'output'    : oput
                 }
         self.__job_data.update(jobd) 
 
         self.__jobid = None
-    
+
+
     def jobid(self):
         """
         :return:    The jobid associated with this job  
@@ -152,7 +156,7 @@ class Job(object):
         :return:    JobID associated with job 
         :type  :    str() 
         """
-        self.__jobid = __impl_submit(self.__job_data)['jobid'] 
+        self.__jobid = str(impl_submit(self.__job_data)['jobid']) 
         return self.__jobid 
 
 
@@ -169,21 +173,19 @@ class Job(object):
         if not self.__jobid:
             raise RuntimeError('Job has not yet been submitted')
 
-        query = {
-            'key'    : __API_KEY,
-            'secret' : __API_SECRET, 
-            'jobids' : [self.__jobid] 
-            }
+        ret = impl_query({
+                    'key'    : API_KEY,
+                    'secret' : API_SECRET, 
+                    'jobids' : [self.__jobid] 
+                })
 
-        ret = __impl_discover(query)  
-        
-        if   not self.__jobid in ret:
+        if not self.__jobid in ret:
             raise RuntimeError('JobId not in return query') 
-        elif not 'status' in ret: 
+        elif not 'status' in ret[self.__jobid]: 
             raise RuntimeError('JobStatus not in return query') 
         else:
-            if ret['status'] in ('PASS', 'FAILED'):
-                return (True , ret['status'] == 'PASS')
+            if ret[self.__jobid]['status'] in ('PASS', 'FAILED'):
+                return (True , ret[self.__jobid]['status'] == 'PASS')
             else: 
                 return (False, False) 
 
@@ -217,13 +219,12 @@ class Group(object):
         if not isinstance(output_file, basestring):
             raise TypeError('Output file must be of type str()')
         
-        job.update({
-            'input'     : self.__iput,
-            'output'    : self.__oput.update({
-                                    'object' : output_file
-                                    })
-            })
-        self.__job_obj_l.append(job) 
+        oput = self.__oput 
+        oput.update({'object' : output_file}) 
+        
+        self.__job_obj_l.append(
+                        Job(job, self.__iput, oput)
+                        ) 
 
 
     def submit(self):
@@ -233,7 +234,9 @@ class Group(object):
         :return:    List of submitted jobids 
         :type  :    list(str())
         """
-        assert len(self.__job_obj_l) == 0
+        assert len(self.__job_obj_l) != 0
+        assert len(self.__job_str_l) == 0 
+
         self.__job_str_l = [x.submit() for x in self.__job_obj_l]
         return self.__job_str_l
 
@@ -244,12 +247,12 @@ class Group(object):
         :type  :    tuple(list(), list(), list()) 
         """
         query = {
-            'key'    : __API_KEY,
-            'secret' : __API_SECRET,  
+            'key'    : API_KEY,
+            'secret' : API_SECRET,  
             'jobids' : self.__job_str_l
             }
 
-        ret = __impl_query(query)  
+        ret = impl_query(query)  
         
         # check that all of the jobids are in the response 
         if not all(jobid in ret for jobid in self.__job_str_l):
@@ -269,5 +272,5 @@ class Group(object):
                 else: #<-- presumably still running 
                     rets[2].append(jobid) 
 
-        return tuple([len(rets[2] == 0)] + rets)           
+        return tuple([len(rets[2]) == 0] + rets)           
 

@@ -1,7 +1,7 @@
 from distutils.core import setup 
 
 setup(name              = 'py-gridvid',
-      version           = '0.0.1',
+      version           = '0.0.3',
       description       = open('../VERSION').read(),
       author            = '',
       author_email      = 'info@cpusage.com',

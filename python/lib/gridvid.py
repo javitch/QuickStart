@@ -107,13 +107,13 @@ class Job(object):
     """
     def __init__(self, jobd, iput, oput):
         """
-        :param jobd:    Job data to submit 
+        :param jobd:    Data to submit.  
         :type  jobd:    dict() 
 
-        :param iput:    
+        :param iput:    Input section of your job. 
         :type  iput:    dict() 
         
-        :param oput:    
+        :param oput:    Output section of your job.
         :type  oput:    dict() 
         """
         if not isinstance(jobd, dict):
@@ -135,6 +135,34 @@ class Job(object):
         self.__job_data.update(jobd) 
 
         self.__jobid = None
+
+
+    @staticmethod 
+    def from_rest_json(data_i):
+        """
+        :param data_i:  Input full JSON. 
+        :type  data_i:  dict() | str() 
+        """
+        if isinstance(data_i, basestring):
+            try:
+                data_i = json.loads(data_i) 
+            except Exception as err:
+                raise SubmitException('input string is invalid JSON')
+        
+        assert isinstance(data_i, dict), 'data_i must be str() or dict()'
+        
+        
+        exclusion_set = set(('input', 'output')) - set(data_i) 
+
+        if exclusion_set:
+            raise RuntimeError('missing keys: %s' % str(exclusion_set))
+        
+        return Job(
+                data_i, 
+                data_i['input' ],
+                data_i['output'],
+                )
+
 
 
     def jobid(self):
@@ -196,6 +224,18 @@ class Group(object):
     """
     def __init__(self, iput, oput):
         """
+        :param iput:    Dictionary of input paramaters. 
+                        { 
+                            'type'      : 'S3',
+                             #...etc...#    
+                            'bucket'    : 'amazon_bucket'
+                        }
+        :type  iput:    dict() 
+        
+        :param oput:    Dictionary of output paramaters barring the 
+                        "object" section.
+        :type  oput:    dict() 
+
         """
         self.__iput = iput 
         self.__oput = oput 
@@ -262,6 +302,7 @@ class Group(object):
         rets = [list(), list(), list()]
 
         for jobid, jobstat in ret.iteritems():
+
             if not 'status' in jobstat:
                 rets[1].append(jobid)    
             else:
@@ -274,3 +315,10 @@ class Group(object):
 
         return tuple([len(rets[2]) == 0] + rets)           
 
+
+if __name__ == '__main__':
+    print\
+    Job.from_rest_json({
+            'input'     : dict(),
+            'output'    : dict()
+            })

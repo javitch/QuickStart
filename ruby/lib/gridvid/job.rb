@@ -1,9 +1,12 @@
 
+require 'json' 
+
 module GridVid
   require 'gridvid/net'
 
   class Job 
     attr_accessor :jobid 
+
 
     def initialize(job_data, iput, oput)
       raise 'input must be hash map'       unless iput.kind_of?     Hash
@@ -19,7 +22,16 @@ module GridVid
         :output => oput
       }.merge(job_data)
     end 
- 
+
+
+    def self.from_rest_json(data_i)
+      data = JSON.parse(data_i) 
+
+      return Job.new(
+              data, data['input'], data['output']
+      )
+    end 
+
 
     def submit()
       self.jobid = GridVid.submit(@_submit)

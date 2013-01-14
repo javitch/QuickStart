@@ -42,6 +42,7 @@ group.add_job(
             :subq     =>  "7",
             :vf       =>  "scale=640:480"
           },
+					:multipass  => false,
           :hls_stream => {}
       },
 
@@ -71,6 +72,7 @@ group.add_job(
             :subq     =>  "7",
             :vf       =>  "scale=640:480"
           },
+					:multipass  => false,
           :hls_stream => {}
       },
 
@@ -94,6 +96,7 @@ group.add_job(
             :subq     =>  "7",
             :vf       =>  "scale=640:480"
           },
+					:multipass  => false,
           :hls_stream => {}
       },
 

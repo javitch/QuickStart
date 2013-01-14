@@ -4,7 +4,7 @@ import os
 import gridvid 
 
 job = gridvid.Job(
-        {
+		{
             'video' : {
                 'codec'     : 'x264',
                 'advanced'  : {
@@ -22,19 +22,19 @@ job = gridvid.Job(
 
             'callback' : 'http://test.cpusage.com/testcallback'
         },
-        {
+		{
             'key'   : os.getenv('AMZ_KEY'),
             'secret': os.getenv('AMZ_SECRET'),
             'bucket': 'cpusage01',
             'object': '15_seconds.flv'
         },
-        {
+		{
             'key'   : os.getenv('AMZ_KEY'),
             'secret': os.getenv('AMZ_SECRET'),
             'bucket': 'cpusage04',
             'object': 'pyth02/test.mp4'
         }
-        )
+	)	
 
 print job.submit() 
 
